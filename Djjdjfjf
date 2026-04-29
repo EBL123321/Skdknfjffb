@@ -1,0 +1,375 @@
+local p=game.Players.LocalPlayer
+local rs=game:GetService("RunService")
+local UIS=game:GetService("UserInputService")
+
+local f=false
+local s=1
+local mult=15
+local bv,bg,con
+
+-- Noclip
+local noclip=false
+local noclipCon
+
+-- Minimizar
+local minimized=false
+
+local controls=require(p:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
+
+------------------------------------------------
+-- FLY SYSTEM
+------------------------------------------------
+local function sf()
+    local c=p.Character
+    if not c then return end
+    local h=c:FindFirstChild("Humanoid")
+    local r=c:FindFirstChild("HumanoidRootPart")
+    if not h or not r then return end
+
+    if bv then bv:Destroy() end
+    if bg then bg:Destroy() end
+
+    bv=Instance.new("BodyVelocity")
+    bv.MaxForce=Vector3.new(1e5,1e5,1e5)
+    bv.Velocity=Vector3.new()
+    bv.P=3000
+    bv.Parent=r
+
+    bg=Instance.new("BodyGyro")
+    bg.MaxTorque=Vector3.new(1e5,1e5,1e5)
+    bg.P=30000
+    bg.D=500
+    bg.CFrame=r.CFrame
+    bg.Parent=r
+
+    h.PlatformStand=true
+
+    if con then con:Disconnect() end
+    con=rs.Heartbeat:Connect(function()
+        if not f or not bv then return end
+        local cam=workspace.CurrentCamera
+        local m=controls:GetMoveVector()
+        local dir=(cam.CFrame.RightVector*m.X)+(cam.CFrame.LookVector*-m.Z)
+        bv.Velocity=dir*(s*mult)
+        bg.CFrame=cam.CFrame
+    end)
+end
+
+local function stop()
+    f=false
+    if con then con:Disconnect() end
+    if bv then bv:Destroy() bv=nil end
+    if bg then bg:Destroy() bg=nil end
+
+    local c=p.Character
+    if c and c:FindFirstChild("Humanoid") then
+        c.Humanoid.PlatformStand=false
+    end
+end
+
+------------------------------------------------
+-- NOCLIP SYSTEM
+------------------------------------------------
+local function setNoclip(state)
+    noclip=state
+
+    if noclipCon then noclipCon:Disconnect() end
+
+    if noclip then
+        noclipCon=rs.Stepped:Connect(function()
+            local c=p.Character
+            if not c then return end
+            for _,v in pairs(c:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide=false
+                end
+            end
+        end)
+    else
+        local c=p.Character
+        if c then
+            for _,v in pairs(c:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide=true
+                end
+            end
+        end
+    end
+end
+
+------------------------------------------------
+-- GUI SETUP
+------------------------------------------------
+task.wait(1.5)
+
+if p:FindFirstChild("PlayerGui") then
+    local old=p.PlayerGui:FindFirstChild("FlyGUI")
+    if old then old:Destroy() end
+end
+
+local sg=Instance.new("ScreenGui")
+sg.Name="FlyGUI"
+sg.ResetOnSpawn=false
+sg.Parent=p:WaitForChild("PlayerGui",10)
+
+local fr=Instance.new("Frame")
+fr.Size=UDim2.new(0,250,0,200)
+fr.Position=UDim2.new(0.5,-125,0.3,0)
+fr.BackgroundColor3=Color3.fromRGB(30,30,40)
+fr.Parent=sg
+Instance.new("UICorner",fr).CornerRadius=UDim.new(0,12)
+
+local tl=Instance.new("TextLabel")
+tl.Size=UDim2.new(1,0,0,35)
+tl.BackgroundTransparency=1
+tl.Text="Fly"
+tl.TextColor3=Color3.new(1,1,1)
+tl.TextScaled=true
+tl.Font=Enum.Font.GothamBold
+tl.Parent=fr
+
+------------------------------------------------
+-- MINIMIZE BUTTON
+------------------------------------------------
+local minBtn=Instance.new("TextButton")
+minBtn.Size=UDim2.new(0,30,0,30)
+minBtn.Position=UDim2.new(1,-35,0,2)
+minBtn.BackgroundColor3=Color3.fromRGB(50,50,60)
+minBtn.Text="-"
+minBtn.TextColor3=Color3.new(1,1,1)
+minBtn.TextScaled=true
+minBtn.Font=Enum.Font.GothamBold
+minBtn.Parent=fr
+Instance.new("UICorner",minBtn).CornerRadius=UDim.new(0,6)
+
+------------------------------------------------
+-- FLY BUTTON
+------------------------------------------------
+local tb=Instance.new("TextButton")
+tb.Size=UDim2.new(0.85,0,0,45)
+tb.Position=UDim2.new(0.075,0,0,45)
+tb.BackgroundColor3=Color3.fromRGB(0,170,0)
+tb.Text="ENABLE FLY"
+tb.TextColor3=Color3.new(1,1,1)
+tb.TextScaled=true
+tb.Font=Enum.Font.GothamBold
+tb.Parent=fr
+Instance.new("UICorner",tb).CornerRadius=UDim.new(0,8)
+
+------------------------------------------------
+-- SPEED UI
+------------------------------------------------
+local spf=Instance.new("Frame")
+spf.Size=UDim2.new(0.85,0,0,45)
+spf.Position=UDim2.new(0.075,0,0,100)
+spf.BackgroundTransparency=1
+spf.Parent=fr
+
+local up=Instance.new("TextButton")
+up.Size=UDim2.new(0.28,0,1,0)
+up.BackgroundColor3=Color3.fromRGB(0,120,215)
+up.Text="↑"
+up.TextColor3=Color3.new(1,1,1)
+up.TextScaled=true
+up.Font=Enum.Font.GothamBold
+up.Parent=spf
+Instance.new("UICorner",up).CornerRadius=UDim.new(0,8)
+
+local sl=Instance.new("TextLabel")
+sl.Size=UDim2.new(0.44,0,1,0)
+sl.Position=UDim2.new(0.28,0,0,0)
+sl.BackgroundTransparency=1
+sl.Text="Speed: 1"
+sl.TextColor3=Color3.new(1,1,1)
+sl.TextScaled=true
+sl.Font=Enum.Font.GothamSemibold
+sl.Parent=spf
+
+local dn=Instance.new("TextButton")
+dn.Size=UDim2.new(0.28,0,1,0)
+dn.Position=UDim2.new(0.72,0,0,0)
+dn.BackgroundColor3=Color3.fromRGB(0,120,215)
+dn.Text="↓"
+dn.TextColor3=Color3.new(1,1,1)
+dn.TextScaled=true
+dn.Font=Enum.Font.GothamBold
+dn.Parent=spf
+Instance.new("UICorner",dn).CornerRadius=UDim.new(0,8)
+
+------------------------------------------------
+-- NOCLIP BUTTON
+------------------------------------------------
+local nb=Instance.new("TextButton")
+nb.Size=UDim2.new(0.85,0,0,40)
+nb.Position=UDim2.new(0.075,0,0,150)
+nb.BackgroundColor3=Color3.fromRGB(0,120,215)
+nb.Text="ENABLE NOCLIP"
+nb.TextColor3=Color3.new(1,1,1)
+nb.TextScaled=true
+nb.Font=Enum.Font.GothamBold
+nb.Parent=fr
+Instance.new("UICorner",nb).CornerRadius=UDim.new(0,8)
+
+------------------------------------------------
+-- ESP
+------------------------------------------------
+local esp=false
+local espObjects={}
+
+local function applyESP(plr)
+    if plr==p then return end
+
+    local function add(char)
+        if espObjects[plr] then
+            espObjects[plr]:Destroy()
+        end
+
+        local hl=Instance.new("Highlight")
+        hl.FillColor=Color3.fromRGB(255,0,0)
+        hl.OutlineColor=Color3.fromRGB(255,255,255)
+        hl.FillTransparency=0.5
+        hl.OutlineTransparency=0
+        hl.Adornee=char
+        hl.Parent=char
+
+        espObjects[plr]=hl
+    end
+
+    if plr.Character then add(plr.Character) end
+    plr.CharacterAdded:Connect(add)
+end
+
+local function toggleESP(state)
+    esp=state
+
+    if esp then
+        for _,plr in pairs(game.Players:GetPlayers()) do
+            applyESP(plr)
+        end
+    else
+        for _,v in pairs(espObjects) do
+            if v then v:Destroy() end
+        end
+        espObjects={}
+    end
+end
+
+local espBtn=Instance.new("TextButton")
+espBtn.Size=UDim2.new(0.6,0,0,40)
+espBtn.Position=UDim2.new(0.02,0,0,0)
+espBtn.BackgroundColor3=Color3.fromRGB(170,0,0)
+espBtn.Text="ENABLE ESP"
+espBtn.TextColor3=Color3.new(1,1,1)
+espBtn.TextScaled=true
+espBtn.Font=Enum.Font.GothamBold
+espBtn.Parent=fr
+Instance.new("UICorner",espBtn).CornerRadius=UDim.new(0,8)
+
+espBtn.MouseButton1Click:Connect(function()
+    esp=not esp
+    toggleESP(esp)
+    if esp then
+        espBtn.Text="DISABLE ESP"
+        espBtn.BackgroundColor3=Color3.fromRGB(0,170,0)
+    else
+        espBtn.Text="ENABLE ESP"
+        espBtn.BackgroundColor3=Color3.fromRGB(170,0,0)
+    end
+end)
+
+------------------------------------------------
+-- UI STATE FIX (IMPORTANTE)
+------------------------------------------------
+local function refreshUI()
+    if f then
+        tb.Text="DISABLE FLY"
+        tb.BackgroundColor3=Color3.fromRGB(170,0,0)
+    else
+        tb.Text="ENABLE FLY"
+        tb.BackgroundColor3=Color3.fromRGB(0,170,0)
+    end
+
+    if noclip then
+        nb.Text="DISABLE NOCLIP"
+        nb.BackgroundColor3=Color3.fromRGB(170,0,0)
+    else
+        nb.Text="ENABLE NOCLIP"
+        nb.BackgroundColor3=Color3.fromRGB(0,120,215)
+    end
+end
+
+------------------------------------------------
+-- BUTTONS
+------------------------------------------------
+tb.MouseButton1Click:Connect(function()
+    f=not f
+    if f then sf() else stop() end
+    refreshUI()
+end)
+
+nb.MouseButton1Click:Connect(function()
+    noclip=not noclip
+    setNoclip(noclip)
+    refreshUI()
+end)
+
+up.MouseButton1Click:Connect(function()
+    s=math.min(s+1,500)
+    sl.Text="Speed: "..s
+end)
+
+dn.MouseButton1Click:Connect(function()
+    s=math.max(s-1,1)
+    sl.Text="Speed: "..s
+end)
+
+------------------------------------------------
+-- MINIMIZE FIX FINAL (SEM DESLIGAR ESP)
+------------------------------------------------
+minBtn.MouseButton1Click:Connect(function()
+    minimized=not minimized
+
+    if minimized then
+        fr.Size=UDim2.new(0,200,0,35)
+
+        tb.Visible=false
+        spf.Visible=false
+        nb.Visible=false
+        espBtn.Visible=false
+
+        minBtn.Text="+"
+    else
+        fr.Size=UDim2.new(0,250,0,200)
+
+        tb.Visible=true
+        spf.Visible=true
+        nb.Visible=true
+        espBtn.Visible=true
+
+        refreshUI()
+
+        minBtn.Text="-"
+    end
+end)
+
+------------------------------------------------
+-- DRAG
+------------------------------------------------
+local dragging=false
+local dragStart
+local startPos
+
+fr.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        dragging=true
+        dragStart=input.Position
+        startPos=fr.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging then
+        local delta=input.Position-dragStart
+        fr.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+    end
+end)
